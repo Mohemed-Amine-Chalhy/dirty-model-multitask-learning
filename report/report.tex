@@ -1,0 +1,508 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\title{A Dirty Model for Multi task Learning.}
+\author{Mohamed Amine Chalhy}
+
+
+
+
+\begin{document}
+
+\title{A Dirty Model for Multi task Learning}
+\author{Mohamed Amine CHALHY}
+\date{}
+\maketitle
+
+\section{Problem and introduction}
+As introduced in the Dirty Model by Jalali et al.~\cite{jalali2010dirty}
+
+In modern science and engineering problems, we often face high-dimensional data
+where the number of features ($p$) (variables) is larger than the number of samples ($n$).
+Example: ($n=100$) patients, ($p=10,000$) genes.
+In such cases, ordinary regression fails, there are infinitely many solutions.
+To get meaningful estimates, we must impose structure on the parameters,
+that is, we assume something about the form of the true model, such as:
+\begin{itemize}
+    \item \textbf{Sparsity:} Only a small subset of the $p$ features are actually relevant.
+    \item \textbf{Low-rank structure:} The data or parameter matrix lies near a low-dimensional subspace.
+    \item \textbf{Sparse Graphical Models:} variables form a sparse dependency network.
+\end{itemize}
+These structural assumptions make it possible to recover parameters even when ($p > n$).
+
+\subsection{Multi-Task Learning}
+In multi-task learning, we have multiple related regression problems (tasks):
+$$y^{(1)} = X^{(1)}\bar{\Theta}^{(1)} + \omega^{(1)}, \quad
+y^{(2)} = X^{(2)}\bar{\Theta}^{(2)} + \omega^{(2)}, \quad \dots, \quad
+y^{(r)} = X^{(r)}\bar{\Theta}^{(r)} + \omega^{(r)}$$
+where:
+\begin{itemize}
+    \item $y^{(k)}$ is the response for the $k$-th task
+    \item $r$ = number of tasks (responses)
+    \item $X^{(k)} \in \mathbb{R}^{n \times p}$ is the design matrix
+    \item $\bar{\theta}^{(k)} \in \mathbb{R}^p$ = regression coefficients for task ($k$)
+    \item $\omega^{(k)} \in \mathbb{R}^n$ the noise vector, we assume $\omega^{(k)} \sim \mathcal{N}(0, \sigma^2)$
+\end{itemize}
+
+The key idea of Multi-Task Learning is to learn all tasks jointly, exploiting common structure among their parameter vectors.
+This can drastically improve estimation accuracy when $n$ is small and $p$ is large.
+
+\subsection{Why do we use a Dirty Model}
+In multi-task learning, two popular approaches are elementwise sparse models such as the Lasso, and block-sparse models based on $\ell_1/\ell_q$ regularization.
+The Lasso solves each task independently through:
+\begin{equation}
+\min_{\theta^{(k)}} \frac{1}{2n}\|y^{(k)} - X^{(k)}\theta^{(k)}\|_2^2 + \lambda \|\theta^{(k)}\|_1, \quad k = 1, \dots, r
+\end{equation}
+This encourages sparsity within each task, but completely ignores potential relationships among tasks.
+As a result, when tasks share common features, the Lasso fails to exploit this structure.
+To address this, $\ell_1/\ell_q$ block regularization methods were proposed, which jointly estimate all tasks by enforcing shared sparsity patterns across them:
+\begin{equation}
+\min_{\Theta \in \mathbb{R}^{p \times r}} \frac{1}{2n}\sum_{k=1}^r \|y^{(k)} - X^{(k)}\Theta^{(k)}\|_2^2 + \lambda \sum_{j=1}^p \|\Theta_{j}\|_q
+\end{equation}
+where $\Theta_j$ denotes the $j$-th row of $\Theta$.
+This formulation assumes that the same set of features are active across all tasks enforcing a shared-support structure. However, in realistic scenarios, only some features are shared across tasks, while others are task-specific.
+When the degree of overlap is low or the magnitudes of shared coefficients differ substantially, this block-regularized approach can perform worse than Lasso, as shown in prior studies.
+
+To overcome these limitations, we introduce the Dirty Model, which combines the strengths of both methods.
+Instead of assuming a single type of sparsity, the Dirty Model represents the parameter matrix $\Theta$ as a superposition of two components:
+$\Theta = B + S$
+where:
+\begin{itemize}
+    \item $B$: captures shared (block-sparse) features across tasks
+    \item $S$: captures task-specific (elementwise sparse) features
+\end{itemize}
+The estimation is performed by solving the following convex optimization problem:
+\begin{equation} \label{eq:algorithm}
+(\widehat{B}, \widehat{S}) =
+\arg\min_{B,S}
+\frac{1}{2n}\sum_{k=1}^{r} \|y^{(k)} - X^{(k)}(B^{(k)} + S^{(k)})\|_2^2 + \lambda_b \|B\|_{1,\infty} + \lambda_s \|S\|_{1,1}
+\end{equation}
+Then we output $\widehat\Theta = \widehat B + \widehat S$.
+This formulation allows the model to adapt to any level of feature overlap, leveraging shared information when present while maintaining flexibility for task-specific differences.
+
+\section{Results}
+\subsection{Theoretical results}
+\subsubsection{Preliminary Information}
+Before presenting the main theoretical results, we introduce key definitions and notations that will be used throughout this section.
+
+We stack all the tasks into matrix form:
+
+
+
+$$Y = X\bar{\Theta} + W$$
+where 
+\begin{itemize}
+    \item $Y = [y^{(1)}, \dots, y^{(r)}] \in \mathbb{R}^{n \times r}$
+    \item $\bar{\Theta} = [\bar{\theta}^{(1)}, \dots, \bar{\theta}^{(r)}] \in \mathbb{R}^{p \times r}$
+    \item $W = [\omega^{(1)}, \dots, \omega^{(r)}] \in \mathbb{R}^{n \times r}$
+\end{itemize}
+
+
+
+
+
+Our objective is to estimate the true parameter matrix $\bar{\Theta}$ using the Dirty Model.
+
+Let $\mathcal{U}_k = \operatorname{Supp}(\bar{\theta}^{(k)})$ denote the support of task $k$, and define the overall union of supports as:
+$\mathcal{U} = \bigcup_{k=1}^{r} \mathcal{U}_k.$
+
+For each element $\bar{\theta}^{(k)}_j$, we define its sign as:
+
+
+$$ 
+\operatorname{sign}(\bar{\theta}^{(k)}_j) =
+\begin{cases}
++1 & \text{if } \bar{\theta}^{(k)}_j > 0, \\
+-1 & \text{if } \bar{\theta}^{(k)}_j < 0, \\
+0 & \text{if } \bar{\theta}^{(k)}_j = 0.
+\end{cases}
+$$
+
+
+
+
+An estimator $\hat{\Theta}$ is said to successfully recover the signed support if:
+$$\operatorname{sign}(\operatorname{Supp}(\hat{\Theta})) = \operatorname{sign}(\operatorname{Supp}(\bar{\Theta}))$$
+This is a stronger condition than recovering the union of active features.
+We measure the estimation accuracy using the elementwise $\ell_{\infty}$ norm:
+\begin{equation*}
+\|\hat{\Theta} - \bar{\Theta}\|_{\infty} =
+\max_{j=1,\dots,p} \max_{k=1,\dots,r}
+\left| \hat{\theta}^{(k)}_j - \bar{\theta}^{(k)}_j \right|.
+\end{equation*}
+
+This metric provides a uniform guarantee over all tasks and features, ensuring that no individual coefficient deviates too much from its true value.
+
+Negahban and Wainwright demonstrated that both the Lasso and the $\ell_1/\ell_\infty$ regularized multi-task models exhibit a phase transition in their ability to recover the true support of the model parameters.
+
+This transition describes a sharp boundary between the regimes of successful and unsuccessful recovery as the number of observations increases.
+For the Lasso, the rescaled sample size is defined as:
+$$\theta_{\text{Lasso}}(n, p, \alpha) = \frac{n}{s \log(p - s)}$$
+where:
+\begin{itemize}
+    \item $n$ : number of samples
+    \item $p$ : total number of features
+    \item $s$ : number of non-zero coefficients (true sparsity level)
+    \item $\alpha$ : fraction of shared features across tasks
+\end{itemize}
+Wainwright showed that:
+\begin{itemize}
+    \item When $\theta_{\text{Lasso}} > 2 + \delta$ for any $\delta > 0$, the Lasso successfully recovers the signed support with probability approaching 1.
+    \item When $\theta_{\text{Lasso}} < 2 - \delta$, it fails with probability approaching 1.
+\end{itemize}
+The term $s \log(p - s)$ represents the effective number of degrees of freedom needed to locate the true sparse signal among all possible combinations of features.
+
+Thus, the Lasso requires the sample size $n$ to grow proportionally to this quantity to guarantee reliable recovery.
+
+In contrast, for the $\ell_1/\ell_{\infty}$ 
+regularized multi-task regression, the rescaled sample size is defined as:
+$$\theta_{1,\infty}(n, p, \alpha) = \frac{n}{s \log(p - (2 - \alpha)s)}$$
+Negahban and Wainwright found that this model exhibits a phase transition at:
+$\theta_{1,\infty} = (4 - 3\alpha)$
+
+Unlike the Lasso, the $\ell_1/\ell_{\infty}$ formulation enforces shared sparsity across tasks, the same subset of features is assumed active in all tasks.
+
+As a result, the effective dimensionality of the problem is lower when tasks share features $\alpha$, leading to improved performance in that regime.
+
+However, when the overlap between active sets is small (low $\alpha$), this shared support assumption becomes restrictive, and the model can perform worse than Lasso.
+
+The difference in rescaled sample sizes between Lasso and $\ell_1/\ell_\infty$ models therefore arises from their different structural assumptions:
+\begin{itemize}
+    \item Lasso: assumes independent sparsity for each task.
+    \item $\ell_1/\ell_\infty$: assumes joint sparsity across all tasks.
+\end{itemize}
+Because joint sparsity reduces the number of distinct unknowns, the $\ell_1/\ell_\infty$ model’s effective sample complexity depends not only on $s \log(p - s)$ but also on how many features are shared, expressed through the term $(2 - \alpha)s$.
+
+For the Dirty Model we use the definition of rescaled sample size as $\ell_1/\ell_\infty$ and it achieves a rescaled phase transition at:
+$\theta_{\text{Dirty}} = (2 - \alpha)$
+which lies strictly before either the Lasso or the $\ell_1/\ell_\infty$ thresholds, except in boundary cases:
+\begin{itemize}
+    \item $\alpha = 0$ : no sharing $\to$ matches Lasso,
+    \item $\alpha = 1$ : full sharing $\to$ matches $\ell_1/\ell_\infty$.
+\end{itemize}
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \framebox{\parbox{0.8\textwidth}{\centering
+   \includegraphics[width=0.8\textwidth]{thch.png}
+  }}
+  \caption{Phase Transition Threshold.}
+  \label{fig:Phase Transition Threshold}
+\end{figure}
+
+\subsubsection{Theorem 1: Deterministic case} (A0)
+ $$ \| X^{(k)}_j \|_2 \le \sqrt{2n}, \quad \forall j, k$$
+This ensures each column (feature) of the design matrix has a comparable scale.
+Without this, features with large norms could dominate and distort regularization.
+
+(A1)
+$\gamma_b = 1 - \max_{j \in \mathcal{U}^c} \sum_{k=1}^r
+\left|
+\left< X^{(k)}_j, X^{(k)}_{\mathcal{U}_k} \right>
+\left(\left< X^{(k)}_{\mathcal{U}_k}, X^{(k)}_{\mathcal{U}_k} \right>\right)^{-1}
+\right|_1 > 0$
+
+This condition ensures low correlation between irrelevant and relevant features.
+
+(A2)
+$C_{\min} := \min_{1 \le k \le r} \lambda_{\min} \left( \frac{1}{n}\left< X^{(k)}_{\mathcal{U}_k}, X^{(k)}_{\mathcal{U}_k} \right>\right) > 0$
+
+This ensures the covariance matrix of the active features is well-conditioned (not singular).
+
+(A3)
+$D_{\max} := \max_{1 \le k \le r}
+\left\|\left( \frac{1}{n} \left< X^{(k)}_{\mathcal{U}_k}, X^{(k)}_{\mathcal{U}_k}\right> \right)^{-1} \right\|_{\infty, 1}
+< \infty$
+
+We don’t want the inverse of the covariance matrix of the active features to explode numerically, which would amplify noise and estimation errors.
+
+Further, we require the regularization penalties be set as
+$$\lambda_s > 2(2 - \gamma_s)\sigma \frac{\sqrt{\log(pr)}}{\gamma_s \sqrt{n}}$$
+$$\lambda_b > 2(2 - \gamma_b)\sigma \frac{\sqrt{\log(pr)}}{\gamma_b \sqrt{n}}$$
+
+Under A0-A3 and if we set the penalties as above, then with high probability ($\le (1 - c_1 e^{-c_2 n})$), the optimization problem \eqref{eq:algorithm} has a unique optimum $\widehat{\Theta}$ that satisfies:
+
+(a) No False Inclusions + Bounded Error
+$$\text{Supp}(\widehat{\Theta}) \subseteq \text{Supp}(\bar{\Theta})$$
+and
+\begin{equation*}
+\|\widehat{\Theta} - \bar{\Theta}\|_{\infty, \infty}
+\le
+\sqrt{\frac{4\sigma^2 \log(p r)}{n C_{\min}}}\lambda_s D_{\max}
+\end{equation*}
+
+(b) Exact Signed Support Recovery
+
+If additionally, all true nonzero coefficients are sufficiently large:
+$$\min_{(j,k) \in \text{Supp}(\bar{\Theta})} |\bar{\theta}^{(k)}_j| > b_{\min}$$
+Then we successfully recover the signed support:
+$$\operatorname{sign}(\operatorname{Supp}(\hat{\Theta})) = \operatorname{sign}(\operatorname{Supp}(\bar{\Theta})).$$
+
+Here the positive constants $c_1, c_2$ depend only on $\gamma_s, \gamma_b, \lambda_s, \lambda_b$ and $\sigma$, but are otherwise independent of $n, p, r$, the problem dimensions of interest.
+
+Remark: Condition (a) guarantees that the estimate will have no false inclusions; i.e. all included features will be relevant.
+If in addition, we require that it have no false exclusions and that recover the support exactly, we need to impose the assumption in (b) that the non-zero elements are large enough to be detectable above the noise.
+
+\subsubsection{Theorem 2: Random case}
+For each task ($k = 1, \dots, r$), the rows $X^{(k)}_i \in \mathbb{R}^p$ are distributed as $X_i^{(k)} \sim \mathcal{N}(0,\Sigma^{(k)})$ where $\Sigma^{(k)} \in \mathbb{R}^{p \times p}$.
+
+We denote by $\Sigma^{(k)}_{\mathcal{V},\mathcal{U}}$ the submatrix of $\Sigma^{(k)}$ with rows indexed by $\mathcal{V}$ and columns indexed by $\mathcal{U}$.
+
+(C1) There is low correlation between irrelevant and relevant features:
+$$\gamma_b := 1 - \max_{j \in \mathcal{U}^c} \sum_{k=1}^r
+\Big| \Sigma^{(k)}_{j, \mathcal{U}_k} (\Sigma^{(k)}_{\mathcal{U}_k, \mathcal{U}_k})^{-1} \Big|_1 > 0$$
+
+(C2) The covariance matrix of active features is well-conditioned:
+$$C_{\min} := \min_{1 \le k \le r} \lambda_{\min}(\Sigma^{(k)}_{\mathcal{U}_k, \mathcal{U}_k}) > 0$$
+
+(C3) The inverse covariance matrices are numerically stable:
+$$D_{\max} := \max_{1 \le k \le r} \Big| (\Sigma^{(k)}_{\mathcal{U}_k, \mathcal{U}_k})^{-1} \Big|_{\infty,1} < \infty$$
+
+Let $s := \max_k |\mathcal{U}_k|$.
+Then $\lambda_s$ and $\lambda_b$ should be set as:
+\begin{equation*}
+\lambda_s > \frac{(4\sigma^2 C_{\min} \log(p/r))^{1/2}}{\gamma_s \sqrt{n C_{\min}} - \sqrt{2s \log(p/r)}}
+\end{equation*}
+and
+\begin{equation*}
+\lambda_b > \frac{(4\sigma^2 C_{\min} r(r \log(2) + \log(p)))^{1/2}}{\gamma_b \sqrt{n C_{\min}} - \sqrt{2sr(r \log(2) + \log(p))}}.
+\end{equation*}
+
+Under C1-C3 and if we set the penalties as above, and if $n$ satisfies:
+
+\begin{equation*}
+n > \max\left(\frac{2s \log(p/r)}{C_{\min} \gamma_s^2}, \frac{2sr(r \log(2) + \log(p))}{C_{\min} \gamma_b^2}\right)
+\end{equation*}
+The optimization problem \eqref{eq:algorithm} satisfies probability at least $1 - c_1 \exp\left(-c_2 (r \log(2) + \log(p))\right) - c_3 \exp(-c_4 \log(r/s))$
+for some positive constants ($c_1, \dots, c_4$):
+
+We have same as before
+(a) No False Inclusions + Bounded Error
+$\text{Supp}(\widehat{\Theta}) \subseteq \text{Supp}(\bar{\Theta})$
+and
+\begin{equation*}
+\|\widehat{\Theta} - \bar{\Theta}\|_{\infty, \infty} \le
+\sqrt{\frac{50 \sigma^2 \log(rs)}{n C_{\min}}} +
+\lambda_s \left( \frac{4 s}{C_{\min} \sqrt{n}} + D_{\max} \right) = g_{min}.
+\end{equation*}
+
+(b) Exact Signed Support Recovery
+If additionally, all true nonzero coefficients are sufficiently large:
+$$\min_{(j,k) \in \text{Supp}(\bar{\Theta})} |\bar{\theta}^{(k)}_j| > g_{\min}$$
+
+Then we successfully recover the signed support:
+$$\operatorname{sign}(\operatorname{Supp}(\hat{\Theta})) = \operatorname{sign}(\operatorname{Supp}(\bar{\Theta})).$$
+
+\subsubsection{Theorem 3: Sharp Phase Transition for 2-Task Gaussian Designs}
+This theorem establishes the precise phase transition boundary for the Dirty Model in the special case of two tasks with Gaussian design matrices.
+We focus on the case where:
+\begin{itemize}
+    \item $r = 2$ (two tasks)
+    \item Design matrices have rows generated from the standard Gaussian distribution $\mathcal{N}(0, I_{n \times n})$
+    \item This ensures conditions C1-C3 are satisfied with $C_{\min} = D_{\max} = 1$
+\end{itemize}
+We show that the Dirty Model outperforms both Lasso and $\ell_1/\ell_\infty$ block regularization across all $\alpha \in ]0,1[$, matching their performance only at the extremes:
+\begin{itemize}
+    \item $\alpha = 0$ (no sharing): matches Lasso
+    \item $\alpha = 1$ (full sharing): matches $\ell_1/\ell_\infty$
+\end{itemize}
+For the phase transition analysis, rescaling of the sample size:
+For the sharp transition analysis, the regularization parameters must satisfy:
+\begin{equation*}
+\lambda_s > \frac{\left(4\sigma^2(1 - \sqrt{s/n})(\log(r) + \log(p - (2-\alpha)s))\right)^{1/2}}{\sqrt{n} - \sqrt{s} - \sqrt{(2-\alpha)s(\log(r) + \log(p - (2-\alpha)s))}}
+\end{equation*}
+\begin{equation*}
+\lambda_b > \frac{\left(4\sigma^2(1 - \sqrt{s/n})r(r\log(2) + \log(p - (2-\alpha)s))\right)^{1/2}}{\sqrt{n} - \sqrt{s} - \sqrt{(1 - \alpha/2)sr(r\log(2) + \log(p - (2-\alpha)s))}}
+\end{equation*}
+Consider a 2-task regression problem with parameters $(n, p, s, \alpha)$, where the design matrix has rows generated from $\mathcal{N}(0, I_{n \times n})$.
+
+We require that the magnitudes of shared coefficients are approximately balanced across tasks:
+
+(F1)
+$\max_{j \in \mathcal{B}^*} \left| |\bar{\Theta}^{(1)}_j| - |\bar{\Theta}^{(2)}_j| \right| = o(\lambda_s)$
+
+where $\mathcal{B}^*$ denotes the set of rows where both entries are non-zero.
+
+Then the estimator $\widehat{\Theta}$ from optimization problem \eqref{eq:algorithm} satisfies:
+
+\textbf{(Success)}
+Under F1-F2, and if the rescaled sample size satisfies:
+$$\theta(n, p, s, \alpha) > 1$$
+then with probability at least $1 - c_1 e^{-c_2 n}$ where $c_1, c_2$ are constants, the estimator $\widehat{\Theta}$ satisfies: (a) and (b) From Theorem 2.
+
+\textbf{(Failure)}
+If the rescaled sample size falls below the threshold:
+$$\theta(n, p, s, \alpha) < 1$$
+then no solution $(\widehat{B}, \widehat{S})$ to the optimization problem \eqref{eq:algorithm} exists for any choices of $\lambda_s$ and $\lambda_b$ such that signed support recovery succeeds.
+
+\subsection{Empirical Results}
+In this section, we empirically validate the theoretical predictions of the Dirty Model using controlled experiments on synthetic data.
+
+\subsubsection{Synthetic Data Simulation}
+We consider a two-task regression problem as described in Theorem 3, systematically varying the parameters $(n, p, s, \alpha)$ to analyze how the model performs under different structural conditions.
+
+\textbf{Data Generation Protocol:}
+We follow the data generation procedure outlined in the original paper, with slight adaptations due to computational constraints:
+\begin{itemize}
+    \item The design matrices $X$ have entries sampled as $X_{ij} \sim \mathcal{N}(0, 1)$
+    \item We fix $p = 128$ and set the sparsity level to $s = \lfloor 0.1p \rfloor$
+    \item We explore different overlap ratios $\alpha \in \left\{0.3, \frac{2}{3}, 0.8\right\}$.
+    \item For each configuration, the sample size $n$ is varied to control the scaled sample size, as defined in the original study
+\end{itemize}
+For each $n$, we generate 100 independent problem instances.
+In each instance:
+\begin{itemize}
+    \item The locations of the non-zero entries in the true parameter matrix $\bar{\Theta}$ are chosen uniformly at random, according to $s$ and $\alpha$.
+    \item Each non-zero coefficient in $\bar{\Theta}$ is drawn from a uniform distribution over $[-10, -g_{\min}] \cup [g_{\min}, 10]$, ensuring that all non-zero coefficients have significant magnitude and well-defined signs.
+    \item The response vectors are generated from the linear model with additive Gaussian noise of standard deviation $\Sigma = 0.1$.
+\end{itemize}
+
+\textbf{Estimation and Evaluation:}
+We estimate $\widehat{\Theta}$ using three models:
+\begin{itemize}
+    \item The Dirty Model
+    \item LASSO
+    \item The $\ell_1 / \ell_\infty$ regularized model
+\end{itemize}
+Due to computational limitations, cross-validation was not performed; instead, the regularization parameters were manually tuned to reproduce the qualitative behaviors reported in the original paper.
+
+\textbf{Success Criterion:}
+An instance is considered successful if the estimated coefficient matrix 
+$\widehat{\Theta}$ correctly recovers the signed support of the true matrix $\bar{\Theta}$.
+
+To account for small numerical fluctuations, coefficients with absolute values below a tolerance of $10^{-1}$ are ignored.
+
+This success criterion was not explicitly defined in the original paper; it represents a contribution introduced in this work to provide a more practical and reproducible evaluation of signed support recovery under limited computational resources.
+
+
+We obtained the following empirical results for the different overlap ratios $\alpha$:
+
+
+
+\textbf{$\alpha = 0.3$, p = 128}
+\begin{figure}[htbp]
+  \centering
+  \framebox{\parbox{0.8\textwidth}{\centering
+   \includegraphics[scale=0.35]{alpha033.png}
+  }}
+  \caption{Empirical results for $\alpha = 2/3$.}
+  \label{fig:alpha023}
+\end{figure}
+
+\textbf{$\alpha = \frac{2}{3}$, p = 128}
+\begin{figure}[htbp]
+  \centering
+  \framebox{\parbox{0.8\textwidth}{\centering
+   \includegraphics[scale=0.35]{alpha023.png}
+  }}
+  \caption{Empirical results for $\alpha = 2/3$.}
+  \label{fig:alpha023}
+\end{figure}
+
+\textbf{$\alpha = 0.8$, p = 128}
+\begin{figure}[htbp]
+  \centering
+  \framebox{\parbox{0.8\textwidth}{\centering
+   \includegraphics[scale=0.35]{alpha088.png}
+  }}
+  \caption{Empirical results for $\alpha = 2/3$.}
+  \label{fig:alpha023}
+\end{figure}
+
+While the results did not exactly reproduce those presented in the original paper—likely due to the absence of cross-validation and computational limitations—the overall trends were consistent with the theoretical predictions:
+\begin{itemize}
+    \item The Dirty Model consistently achieved the best performance across all settings.
+    \item The LASSO model performed relatively well when the overlap ratio $\alpha$ was small, reflecting its strength when tasks share fewer relevant features.
+    \item The $\ell_1 / \ell_\infty$ model performed better when $\alpha$ was large, confirming its effectiveness in capturing highly overlapping supports across tasks.
+\end{itemize}
+These findings reinforce the main theoretical insight that the Dirty Model effectively adapts to varying degrees of task relatedness, outperforming single-structure models across diverse regimes.
+
+\subsubsection{Handwritten Digits Dataset}
+We used the Multiple Features dataset from the UCI Machine Learning Repository.
+Each feature table was normalized by dividing all values by its maximum value to ensure consistency across features.
+The models were trained using different numbers of training samples per class — n = 10, 20, and 40 — and tested on the remaining (200 − n) samples per class.
+Due to computational limitations, we could not perform full cross-validation. Instead, we manually selected parameter values that yielded good performance for both the Dirty Model and the L1/L∞ model.
+The chosen parameters were:
+\begin{itemize}
+    \item $\lambda_s = 0.02$
+    \item $\lambda_b = 0.03$
+    \item $\lambda_{\text{Lasso}} = 0.001$
+    \item $\lambda_{1/\infty} = 0.01$
+\end{itemize}
+Overall, the Dirty Model performed slightly better when the number of training samples per class was small (n = 10). However, as the number of training samples increased (n = 20 and n = 40), Dirty became slightly less accurate compared to Lasso.
+We also observed that the Dirty Model was less stable and took significantly longer to fit, whereas Lasso achieved good performance with minimal parameter tuning.
+
+\bigskip
+\hrule
+\bigskip
+
+\textbf{Training samples per class: 10}
+
+\texttt{=== Global Errors ===} \\
+\texttt{Inf-norm:  0.1026 (10.26\%)} \\
+\texttt{Dirty:     0.0937 (9.37\%)} \\
+\texttt{Lasso:     0.1184 (11.84\%)}
+
+\texttt{=== Variance of Per-Class Errors ===} \\
+\texttt{Inf-norm:  0.002893} \\
+\texttt{Dirty:     0.001827} \\
+\texttt{Lasso:     0.002871}
+
+\bigskip
+\hrule
+\bigskip
+
+\textbf{Training samples per class: 20}
+
+\texttt{=== Global Errors ===} \\
+\texttt{Inf-norm:  0.0511 (5.11\%)} \\
+\texttt{Dirty:     0.0550 (5.50\%)} \\
+\texttt{Lasso:     0.0544 (5.44\%)}
+
+\texttt{=== Variance of Per-Class Errors ===} \\
+\texttt{Inf-norm:  0.000900} \\
+\texttt{Dirty:     0.001256} \\
+\texttt{Lasso:     0.000486}
+
+
+\bigskip
+\hrule
+\bigskip
+
+\textbf{Training samples per class: 40}
+
+\texttt{=== Global Errors ===} \\
+\texttt{Inf-norm:  0.0344 (3.44\%)} \\
+\texttt{Dirty:     0.0375 (3.75\%)} \\
+\texttt{Lasso:     0.0256 (2.56\%)}
+
+\texttt{=== Variance of Per-Class Errors ===} \\
+\texttt{Inf-norm:  0.000424} \\
+\texttt{Dirty:     0.000492} \\
+\texttt{Lasso:     0.000269}
+
+
+
+\bigskip
+The results indicate that the Dirty Model achieves slightly better performance when training data is scarce, suggesting that it can better capture useful shared structure across tasks under low-data regimes.
+However, as the training set grows (n = 20, 40), Lasso begins to outperform both Dirty and L1/L∞ in terms of global accuracy and per-class stability.
+Additionally, the Dirty Model required more computation time and was less stable, whereas Lasso offered competitive results with faster convergence and minimal parameter tuning.
+
+\section*{Code Availability}
+All Python scripts used for data preprocessing, model training, and figure generation are available at:  
+\url{https://github.com/Mohemed-Amine-Chalhy/dirty-model-multitask-learning}
+
+
+\begin{thebibliography}{9}
+
+\bibitem{jalali2010dirty}
+Ali Jalali, Sujay Sanghavi, Chao Ruan, and Pradeep Ravikumar.
+\newblock A dirty model for multi-task learning.
+\newblock \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2010.
+
+\end{thebibliography}
+\end{document}

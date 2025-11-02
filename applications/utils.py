@@ -7,10 +7,12 @@ import seaborn as sns
 import cvxpy as cp
 from tqdm import tqdm
 from typing import List
+import re 
 import math
 
 
 def theta_lasso(n, p, s):
+
     if p <= s:
         raise ValueError("p must be greater than s.")
     if s <= 0:
@@ -19,11 +21,12 @@ def theta_lasso(n, p, s):
 
 
 def theta_1_inf(n, p, s, alpha):
+
     if not (0 <= alpha <= 1):
         raise ValueError("alpha must be in [0, 1].")
     effective_p = p - (2 - alpha) * s
     if effective_p <= 1:
-        # log(effective_p) <= 0 → undefined or negative; not meaningful
+       
         raise ValueError("Effective feature dimension p - (2 - alpha)*s must be > 1.")
     if s <= 0:
         raise ValueError("s must be positive.")
@@ -32,15 +35,15 @@ def theta_1_inf(n, p, s, alpha):
 
 
 def signed_support_match(Theta_hat:np.ndarray, Theta_true:np.ndarray, tol=1e-2):
-
+   
     support_hat = np.abs(Theta_hat) > tol
     support_true = np.abs(Theta_true) > tol
 
-
+    
     if not np.array_equal(support_hat, support_true):
 
         return False
- 
+   
     signs_match = np.sign(Theta_hat[support_true]) == np.sign(Theta_true[support_true])
     return np.all(signs_match).item()
 
@@ -52,12 +55,14 @@ def make_theta(p:int, alpha:float , s:int, r:int, gmin: float):
     num_task_specific = s - num_shared
     features_index = np.arange(p)
 
-
+    
     shared_features = rng.choice(features_index, size=num_shared, replace=False)
-
+    
+    
     shared_magnitudes = rng.uniform(gmin, gmin*3, size=(num_shared, 1))
-
- 
+   
+    
+    
     shared_signs = rng.choice([-1, 1], size=(num_shared, 1))
     shared_coefs = shared_magnitudes * shared_signs
 
@@ -66,13 +71,13 @@ def make_theta(p:int, alpha:float , s:int, r:int, gmin: float):
 
     theta[shared_features] = shared_coefs
 
-
+    
     for task in range(r):
         task_features = rng.choice(remaining_features, size=num_task_specific, replace=False)
         remaining_features = np.setdiff1d(remaining_features, task_features)
 
         magnitudes = rng.uniform(gmin, gmin*3, size=num_task_specific)
-
+       
         signs = rng.choice([-1, 1], size=num_task_specific)
         theta[task_features, task] = magnitudes * signs
 
@@ -90,10 +95,10 @@ def make_design_matrix(n:int = None,sigma:float = None, theta:np.ndarray =None):
         for k in range(r):
             Xk = rng.normal(0, size=(n, p),scale=1)
 
-        
+           
             col_norms = np.linalg.norm(Xk, axis=0)
             col_norms[col_norms == 0] = 1.0 
-            Xk = (Xk / col_norms) * np.sqrt(n) # 
+            Xk = (Xk / col_norms) * np.sqrt(n) # Normalize to sqrt(n)
             X_list.append(Xk)
 
         Y = np.zeros((n, r))
@@ -130,40 +135,6 @@ def compare_thetas(theta_true: np.array, theta_hat: np.array, ylim=None):
 
     plt.tight_layout()
 
-def view_theta(theta:np.ndarray):
-
-        p = theta.shape[1]
-
-        fig, axis= plt.subplots(2,2, figsize=(12, 10))
-        (ax1,ax2,ax3,ax4)  = axis.reshape(-1)
-        ]
-        Theta_true = theta
-
-        # ax1.scatter(y_1,y_2)
-        # ax1.set_xlabel("Task 1 Output ($y_1$)")
-        # ax1.set_ylabel("Task 2 Output ($y_2$)")
-        # ax1.set_title("Relationship Between Task Outputs")
-        # ax1.grid(True)
-
-        sns.heatmap(Theta_true, cmap="coolwarm", annot=False, cbar=True, ax=ax2)
-        ax2.set_title("True Coefficient Matrix (Theta_true)")
-        ax2.set_xlabel("Task")
-        ax2.set_ylabel("Feature Index")
-
-        ax3.bar(np.arange(p), Theta_true[:, 0], alpha=0.6, label="Task 1")
-        ax3.bar(np.arange(p), Theta_true[:, 1], alpha=0.6, label="Task 2")
-        ax3.set_title("Feature Coefficients per Task")
-        ax3.set_xlabel("Feature Index")
-        ax3.set_ylabel("Coefficient Value")
-        ax3.legend()
-
-        ax4.scatter(Theta_true[:, 0], Theta_true[:, 1])
-        ax4.set_xlabel("Task 1 Coefficients")
-        ax4.set_ylabel("Task 2 Coefficients")
-        ax4.set_title("Correlation Between Task Coefficients")
-        ax4.grid(True)
-
-
 
 def fit(X_list:List[np.ndarray], Y:np.ndarray,lambda_s:float,lambda_b:float, return_B_S= False):
         #print('-----------Predicting-------------')
@@ -171,20 +142,16 @@ def fit(X_list:List[np.ndarray], Y:np.ndarray,lambda_s:float,lambda_b:float, ret
 
 
         p, r, n = X_list[0].shape[1], len(X_list), X_list[0].shape[0]
-        # Parameters
-       
-        # lambda_s = 2 * sigma * np.sqrt(np.log(p * r) / n)   
-        # lambda_b = 2 * sigma * np.sqrt(r * np.log(p) / n)  
- 
+    
   
         X = X_list
         y = [Y[:,i] for i in range(r)]
 
-        # Define optimization variables
+      
         S = cp.Variable((p, r), name='S')
         B = cp.Variable((p, r), name='B')
 
-        # Define objective
+       
         loss = 0
         for k in range(r):
             Xk = X[k]
@@ -193,25 +160,23 @@ def fit(X_list:List[np.ndarray], Y:np.ndarray,lambda_s:float,lambda_b:float, ret
 
         loss = (1/(2*n)) * loss
 
-        # Regularization terms
+     
         reg_s = lambda_s * cp.norm1(S)                   # ||S||_{1,1}
 
         reg_b = lambda_b * cp.norm(B, p="inf", axis=1).sum()
 
-        # Final objective
+        
         objective = cp.Minimize(loss + reg_s + reg_b)
 
-        # Problem definition and solve
         problem = cp.Problem(objective)
         problem.solve(solver=cp.OSQP, verbose=False, warm_start=True)
-        #problem.solve(solver=cp.ECOS, verbose=False, warm_start=True)
+        
 
         if return_B_S:
             return B.value, S.value
 
 
 
-        # Output result
         Theta_hat = S.value + B.value
         Theta_hat[np.isclose(Theta_hat,0,atol=10e-12)] = 0
         # print("Optimization status:", problem.status)
@@ -227,10 +192,8 @@ def fit_lasso(X_list: List[np.ndarray], Y: np.ndarray, lambda_l1: float):
     X = X_list
     y = [Y[:, i] for i in range(r)]
 
-    # Define variable 
     Theta = cp.Variable((p, r), name='Theta')
 
-    # Define loss
     loss = 0
     for k in range(r):
         Xk = X[k]
@@ -239,16 +202,13 @@ def fit_lasso(X_list: List[np.ndarray], Y: np.ndarray, lambda_l1: float):
 
     loss = (1 / (2 * n)) * loss
 
-    # Regularization 
+     
     reg = lambda_l1 * cp.norm1(Theta)
 
-    # Objective
     objective = cp.Minimize(loss + reg)
 
-    # Solve
     problem = cp.Problem(objective)
     problem.solve(solver=cp.OSQP, verbose=False, warm_start=True)
-    #problem.solve(solver=cp.ECOS, verbose=False, warm_start=True)
 
     Theta_hat = Theta.value
     Theta_hat[np.isclose(Theta_hat, 0, atol=1e-10)] = 0
@@ -258,15 +218,14 @@ def fit_lasso(X_list: List[np.ndarray], Y: np.ndarray, lambda_l1: float):
 
 def fit_1_inf(X_list: List[np.ndarray], Y: np.ndarray, lambda_1inf: float):
 
+
     p, r, n = X_list[0].shape[1], len(X_list), X_list[0].shape[0]
 
     X = X_list
     y = [Y[:, i] for i in range(r)]
 
-    # Variable
     Theta = cp.Variable((p, r), name='Theta')
 
-    # Loss
     loss = 0
     for k in range(r):
         Xk = X[k]
@@ -274,14 +233,12 @@ def fit_1_inf(X_list: List[np.ndarray], Y: np.ndarray, lambda_1inf: float):
         loss += cp.sum_squares(yk - Xk @ Theta[:, k])
     loss = (1 / (2 * n)) * loss
 
-    # Regularization: sum of L\infty norms of each row
     reg = lambda_1inf * cp.norm(Theta, p="inf", axis=1).sum()
 
-    # Objective
+    
     objective = cp.Minimize(loss + reg)
     problem = cp.Problem(objective)
     problem.solve(solver=cp.OSQP, verbose=False, warm_start=True)
-
 
     Theta_hat = Theta.value
     Theta_hat[np.isclose(Theta_hat, 0, atol=1e-10)] = 0
@@ -291,7 +248,10 @@ def fit_1_inf(X_list: List[np.ndarray], Y: np.ndarray, lambda_1inf: float):
 
 
 
+
+
 def lambda_s_bound(sigma, s, n, r, p, alpha):
+
     if sigma <= 0:
         raise ValueError("sigma must be positive.")
     if s <= 0:
@@ -408,3 +368,175 @@ def inf_trial(n: int,p: int,r: int, s : int ,lambda1_inf: float,alpha: float,sig
     if return_params:
         return (Theta_true,Theta_hat,success)
     return success
+
+
+
+def extract_n_values(results_dict):
+
+    n_values, y_values = [], []
+    for key, val in results_dict.items():
+        match = re.search(r'n=(\d+)', key)
+        if match:
+            n_values.append(int(match.group(1)))
+            y_values.append(val)
+    return zip(*sorted(zip(n_values, y_values)))
+
+
+def find_threshold_crossing(x_vals, y_vals, threshold=0.5):
+    for i, y in enumerate(y_vals):
+        if y > threshold:
+            return x_vals[i]
+    return None
+
+
+
+
+def application_1_plot(resuls_dirty, resuls_1inf, resuls_lasso, p, s, alpha, figname: str):
+
+    n_lasso, y_lasso = extract_n_values(resuls_lasso)
+    n_1inf, y_1inf = extract_n_values(resuls_1inf)
+    n_dirty, y_dirty = extract_n_values(resuls_dirty)
+
+    n_lasso_scaled = [theta_1_inf(n, p, s, alpha) for n in n_lasso]
+    n_1inf_scaled = [theta_1_inf(n, p, s, alpha) for n in n_1inf]
+    n_dirty_scaled = [theta_1_inf(n, p, s, alpha) for n in n_dirty]
+
+    fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
+    ax.set_facecolor('white')
+    ax.set_axisbelow(True)  # ensure grid is below the lines
+
+    ax.plot(n_lasso_scaled, y_lasso, marker='s', linestyle='-', linewidth=1.5, 
+            markersize=6, label='LASSO', color='black', markerfacecolor='white', 
+            markeredgewidth=1.5)
+
+    ax.plot(n_1inf_scaled, y_1inf, marker='o', linestyle='--', linewidth=1.5,
+            markersize=6, label='L1/Linf Regularizer', color='black', 
+            markerfacecolor='black', markeredgewidth=1.5)
+
+    ax.plot(n_dirty_scaled, y_dirty, marker='^', linestyle=':', linewidth=1.5,
+            markersize=6, label='Dirty Model', color='black', 
+            markerfacecolor='white', markeredgewidth=1.5)
+
+    threshold_lasso = find_threshold_crossing(n_lasso_scaled, y_lasso)
+    threshold_1inf = find_threshold_crossing(n_1inf_scaled, y_1inf)
+    threshold_dirty = find_threshold_crossing(n_dirty_scaled, y_dirty)
+
+    for threshold in [threshold_lasso, threshold_1inf, threshold_dirty]:
+        if threshold is not None:
+            ax.axvline(x=threshold, color='black', linestyle='-', linewidth=2, alpha=0.7)
+
+    ax.set_xlabel('Control Parameter $\\theta$', fontsize=12)
+    ax.set_ylabel('Probability of Success', fontsize=12)
+
+    ax.legend(fontsize=10, loc='best', frameon=True, fancybox=False, 
+              edgecolor='black', framealpha=1, facecolor='white')
+
+    ax.spines['top'].set_visible(True)
+    ax.spines['right'].set_visible(True)
+    for spine in ['top', 'right', 'bottom', 'left']:
+        ax.spines[spine].set_linewidth(1)
+
+    ax.set_ylim(-0.05, 1.05)
+
+    # Call grid **after spines are set**
+    ax.grid(True, which='both', linestyle='-', linewidth=0.5, color='gray', alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(figname, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.show()
+
+
+def dirty_resutls(n_range,n_trials,sigma,p,r,s,lambda_s,lambda_b,alpha,):   
+    resuls_dirty = {}
+    consecutive_perfect = []  
+    for idx, _n in enumerate(n_range):
+        success = 0
+        pbar = tqdm(range(n_trials))
+        _gmin = compute_g_min(sigma, r, s, _n, lambda_s, C_min=1, D_max=1)
+        for i in pbar:
+            if dirty_trial(_n, p, r, s, lambda_b, lambda_s, alpha, sigma, _gmin):
+                success += 1
+            pbar.set_description(f'success: {success}/{i+1} | n = {_n}/{n_range[-1]}')
+        
+        rate = success / n_trials
+        key = f"n={_n}_p={p}_r={r}_s={s}_alpha={alpha}_lb={lambda_b}_ls={lambda_s}"
+        resuls_dirty[key] = rate
+        consecutive_perfect.append(rate)
+
+        if len(consecutive_perfect) > 10:
+            consecutive_perfect.pop(0)
+
+        if len(consecutive_perfect) == 10 and all(r == 1.0 for r in consecutive_perfect):
+            print(f"10 consecutive perfect results up to n={_n}. Filling rest with 1.0...")
+            for _n_rest in n_range[idx+1:]:
+                key_rest = f"n={_n_rest}_p={p}_r={r}_s={s}_alpha={alpha}_lb={lambda_b}_ls={lambda_s}"
+                resuls_dirty[key_rest] = 1.0
+            break  # exit the loop early
+    return resuls_dirty
+
+
+def lasso_results(n_range, n_trials, sigma, p, r, s, lambda_s, lambda_lasso, alpha): 
+    results_lasso = {}
+    consecutive_perfect = []  
+
+    for idx, _n in enumerate(n_range):
+        success = 0
+        pbar = tqdm(range(n_trials))
+        _gmin = compute_g_min(sigma, r, s, _n, lambda_s, C_min=1, D_max=1)
+
+        for i in pbar:
+            if lasso_trial(_n, p, r, s, lambda_lasso, alpha, sigma, _gmin):
+                success += 1
+            pbar.set_description(f'success: {success}/{i+1} | n = {_n}/{n_range[-1]}')
+
+        rate = success / n_trials
+        key = f"n={_n}_p={p}_r={r}_s={s}_alpha={alpha}_llasso={lambda_lasso}"
+        results_lasso[key] = rate
+        consecutive_perfect.append(rate)
+
+        if len(consecutive_perfect) > 10:
+            consecutive_perfect.pop(0)
+
+        # Check for 10 consecutive perfect successes
+        if len(consecutive_perfect) == 10 and all(r == 1.0 for r in consecutive_perfect):
+            print(f"10 consecutive perfect Lasso runs up to n={_n}. Filling rest with 1.0.")
+            for _n_rest in n_range[idx + 1:]:
+                key_rest = f"n={_n_rest}_p={p}_r={r}_s={s}_alpha={alpha}_llasso={lambda_lasso}"
+                results_lasso[key_rest] = 1.0
+            break
+
+    return results_lasso
+
+
+
+def inf_results(n_range,n_trials,sigma,p,r,s,lambda_s,lambda_1inf,alpha,):
+        N = n_range
+        resuls_1inf = {}  
+        consecutive_perfect = []  
+
+        for idx, _n in enumerate(N):
+            success = 0
+            pbar = tqdm(range(n_trials))
+            _gmin = compute_g_min(sigma, r, s, _n, lambda_s, C_min=1, D_max=1)
+            
+            for i in pbar:
+                if inf_trial(_n, p, r, s, lambda_1inf, alpha, sigma, _gmin):
+                    success += 1
+                pbar.set_description(f'success: {success}/{i+1} | n = {_n}/{N[-1]}')
+            
+            rate = success / n_trials
+            key = f"n={_n}_p={p}_r={r}_s={s}_alpha={alpha}_linf={lambda_1inf}"
+            resuls_1inf[key] = rate
+            consecutive_perfect.append(rate)
+            
+            if len(consecutive_perfect) > 10:
+                consecutive_perfect.pop(0)
+            
+            # If last 10 are all exactly 1.0, fill the rest and break
+            if len(consecutive_perfect) == 10 and all(r == 1.0 for r in consecutive_perfect):
+                print(f"10 consecutive perfect runs (inf) up to n={_n}. Filling remaining with 1.0.")
+                for _n_rest in N[idx + 1:]:
+                    key_rest = f"n={_n_rest}_p={p}_r={r}_s={s}_alpha={alpha}_linf={lambda_1inf}"
+                    resuls_1inf[key_rest] = 1.0
+                break
+        return resuls_1inf

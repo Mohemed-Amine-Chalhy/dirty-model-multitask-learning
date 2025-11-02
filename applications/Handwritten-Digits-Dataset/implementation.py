@@ -3,7 +3,12 @@ import pandas as pd
 from utils import fit, fit_1_inf, fit_lasso
 from functools import reduce
 
+
+
+
+
 # Load and normalize features
+# get it from : https://archive.ics.uci.edu/ml/datasets/multiple+features
 X_fou = np.loadtxt('multiplefeatures/mfeat-fou')   
 X_fac = np.loadtxt('multiplefeatures/mfeat-fac')   
 X_kar = np.loadtxt('multiplefeatures/mfeat-kar')   

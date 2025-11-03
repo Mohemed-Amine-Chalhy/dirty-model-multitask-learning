@@ -10,7 +10,6 @@ from typing import List
 import re 
 import math
 
-
 def theta_lasso(n, p, s):
 
     if p <= s:
@@ -310,8 +309,6 @@ def lambda_b_bound(sigma, s, n, r, p, alpha):
 
     return numerator / denominator
         
-
-import math
 
 def compute_g_min(sigma, r, s, n,lambda_s, C_min = 1, D_max = 1 ):
 

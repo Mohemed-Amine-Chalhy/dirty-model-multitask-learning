@@ -1,8 +1,8 @@
 \documentclass{article}
-\usepackage{graphicx} % Required for inserting images
+\usepackage{graphicx} 
 \usepackage{amsfonts}
 \usepackage{amsmath}
-
+\usepackage[bookmarksdepth=3]{hyperref}  
 \title{A Dirty Model for Multi task Learning.}
 \author{Mohamed Amine Chalhy}
 
@@ -11,10 +11,11 @@
 
 \begin{document}
 
-\title{A Dirty Model for Multi task Learning}
-\author{Mohamed Amine CHALHY}
 \date{}
 \maketitle
+\tableofcontents  
+
+\newpage
 
 \section{Problem and introduction}
 As introduced in the Dirty Model by Jalali et al.~\cite{jalali2010dirty}
@@ -160,7 +161,7 @@ In contrast, for the $\ell_1/\ell_{\infty}$
 regularized multi-task regression, the rescaled sample size is defined as:
 $$\theta_{1,\infty}(n, p, \alpha) = \frac{n}{s \log(p - (2 - \alpha)s)}$$
 Negahban and Wainwright found that this model exhibits a phase transition at:
-$\theta_{1,\infty} = (4 - 3\alpha)$
+$$\theta_{1,\infty} = (4 - 3\alpha)$$
 
 Unlike the Lasso, the $\ell_1/\ell_{\infty}$ formulation enforces shared sparsity across tasks, the same subset of features is assumed active in all tasks.
 
@@ -232,7 +233,7 @@ and
 \begin{equation*}
 \|\widehat{\Theta} - \bar{\Theta}\|_{\infty, \infty}
 \le
-\sqrt{\frac{4\sigma^2 \log(p r)}{n C_{\min}}}\lambda_s D_{\max}
+\sqrt{\frac{4\sigma^2 \log(p r)}{n C_{\min}}}\lambda_s D_{\max} =  b_{\min}
 \end{equation*}
 
 (b) Exact Signed Support Recovery
@@ -245,6 +246,7 @@ $$\operatorname{sign}(\operatorname{Supp}(\hat{\Theta})) = \operatorname{sign}(\
 Here the positive constants $c_1, c_2$ depend only on $\gamma_s, \gamma_b, \lambda_s, \lambda_b$ and $\sigma$, but are otherwise independent of $n, p, r$, the problem dimensions of interest.
 
 Remark: Condition (a) guarantees that the estimate will have no false inclusions; i.e. all included features will be relevant.
+
 If in addition, we require that it have no false exclusions and that recover the support exactly, we need to impose the assumption in (b) that the non-zero elements are large enough to be detectable above the noise.
 
 \subsubsection{Theorem 2: Random case}
@@ -312,9 +314,13 @@ We show that the Dirty Model outperforms both Lasso and $\ell_1/\ell_\infty$ blo
 \end{itemize}
 For the phase transition analysis, rescaling of the sample size:
 For the sharp transition analysis, the regularization parameters must satisfy:
+
+(F1)
 \begin{equation*}
 \lambda_s > \frac{\left(4\sigma^2(1 - \sqrt{s/n})(\log(r) + \log(p - (2-\alpha)s))\right)^{1/2}}{\sqrt{n} - \sqrt{s} - \sqrt{(2-\alpha)s(\log(r) + \log(p - (2-\alpha)s))}}
 \end{equation*}
+
+(F2)
 \begin{equation*}
 \lambda_b > \frac{\left(4\sigma^2(1 - \sqrt{s/n})r(r\log(2) + \log(p - (2-\alpha)s))\right)^{1/2}}{\sqrt{n} - \sqrt{s} - \sqrt{(1 - \alpha/2)sr(r\log(2) + \log(p - (2-\alpha)s))}}
 \end{equation*}
@@ -322,8 +328,10 @@ Consider a 2-task regression problem with parameters $(n, p, s, \alpha)$, where 
 
 We require that the magnitudes of shared coefficients are approximately balanced across tasks:
 
-(F1)
-$\max_{j \in \mathcal{B}^*} \left| |\bar{\Theta}^{(1)}_j| - |\bar{\Theta}^{(2)}_j| \right| = o(\lambda_s)$
+
+
+
+$$\max_{j \in \mathcal{B}^*} \left| |\bar{\Theta}^{(1)}_j| - |\bar{\Theta}^{(2)}_j| \right| = o(\lambda_s)$$
 
 where $\mathcal{B}^*$ denotes the set of rows where both entries are non-zero.
 
@@ -354,10 +362,11 @@ We follow the data generation procedure outlined in the original paper, with sli
     \item For each configuration, the sample size $n$ is varied to control the scaled sample size, as defined in the original study
 \end{itemize}
 For each $n$, we generate 100 independent problem instances.
+
 In each instance:
 \begin{itemize}
     \item The locations of the non-zero entries in the true parameter matrix $\bar{\Theta}$ are chosen uniformly at random, according to $s$ and $\alpha$.
-    \item Each non-zero coefficient in $\bar{\Theta}$ is drawn from a uniform distribution over $[-10, -g_{\min}] \cup [g_{\min}, 10]$, ensuring that all non-zero coefficients have significant magnitude and well-defined signs.
+    \item Each non-zero coefficient in $\bar{\Theta}$ is drawn from a uniform distribution over $[-3 \cdot g_{min}, -g_{\min}] \cup [g_{\min}, 3 \cdot g_{min}]$, ensuring that all non-zero coefficients have significant magnitude and well-defined signs.
     \item The response vectors are generated from the linear model with additive Gaussian noise of standard deviation $\Sigma = 0.1$.
 \end{itemize}
 
@@ -389,7 +398,7 @@ We obtained the following empirical results for the different overlap ratios $\a
   \framebox{\parbox{0.8\textwidth}{\centering
    \includegraphics[scale=0.35]{alpha033.png}
   }}
-  \caption{Empirical results for $\alpha = 2/3$.}
+  \caption{Empirical results for $\alpha = 0.3$.}
   \label{fig:alpha023}
 \end{figure}
 
@@ -409,7 +418,7 @@ We obtained the following empirical results for the different overlap ratios $\a
   \framebox{\parbox{0.8\textwidth}{\centering
    \includegraphics[scale=0.35]{alpha088.png}
   }}
-  \caption{Empirical results for $\alpha = 2/3$.}
+  \caption{Empirical results for $\alpha =0.8$.}
   \label{fig:alpha023}
 \end{figure}
 
@@ -424,8 +433,15 @@ These findings reinforce the main theoretical insight that the Dirty Model effec
 \subsubsection{Handwritten Digits Dataset}
 We used the Multiple Features dataset from the UCI Machine Learning Repository.
 Each feature table was normalized by dividing all values by its maximum value to ensure consistency across features.
-The models were trained using different numbers of training samples per class — n = 10, 20, and 40 — and tested on the remaining (200 − n) samples per class.
-Due to computational limitations, we could not perform full cross-validation. Instead, we manually selected parameter values that yielded good performance for both the Dirty Model and the L1/L∞ model.
+
+The models were trained using different numbers of training samples per class
+
+— n = 10, 20, and 40 — and tested on the remaining ($200-n$) samples per class.
+
+
+Due to computational limitations, we could not perform full cross-validation. 
+
+Instead, we manually selected parameter values that yielded good performance for both the Dirty Model and the L1/L∞ model.
 The chosen parameters were:
 \begin{itemize}
     \item $\lambda_s = 0.02$
@@ -489,11 +505,13 @@ We also observed that the Dirty Model was less stable and took significantly lon
 
 \bigskip
 The results indicate that the Dirty Model achieves slightly better performance when training data is scarce, suggesting that it can better capture useful shared structure across tasks under low-data regimes.
+
 However, as the training set grows (n = 20, 40), Lasso begins to outperform both Dirty and L1/L∞ in terms of global accuracy and per-class stability.
 Additionally, the Dirty Model required more computation time and was less stable, whereas Lasso offered competitive results with faster convergence and minimal parameter tuning.
 
-\section*{Code Availability}
-All Python scripts used for data preprocessing, model training, and figure generation are available at:  
+\section{Code Availability}
+All Python scripts used for data preprocessing, model training, figure generation, as well as the LaTeX source files for this report, are available at:
+
 \url{https://github.com/Mohemed-Amine-Chalhy/dirty-model-multitask-learning}
 
 

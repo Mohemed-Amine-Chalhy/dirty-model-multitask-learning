@@ -1,3 +1,4 @@
+```
 applications/
     ├── Handwritten-Digits-Dataset/
         └── implementation.py
@@ -14,3 +15,4 @@ report/
         └── thch.png
     ├── report.pdf
     └── report.tex
+```

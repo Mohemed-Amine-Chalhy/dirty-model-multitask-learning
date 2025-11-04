@@ -2,6 +2,11 @@
 
 Implementation of the Dirty Model from Jalali et al. (NeurIPS 2010) for multi-task regression with mixed shared and task-specific sparsity.
 
+
+
+![](report/media/alpha023.png)
+
+
 ## Overview
 
 The Dirty Model decomposes the parameter matrix as **Θ = B + S**, where:
